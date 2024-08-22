@@ -6,13 +6,13 @@ import ActionManagerProvider from './ActionManagerProvider';
 import AuthenticationProvider from './AuthenticationProvider/AuthenticationProvider';
 import AuthorizationProvider from './AuthorizationProvider';
 import AvatarUrlProvider from './AvatarUrlProvider';
-import { CallProvider } from './CallProvider';
 import ConnectionStatusProvider from './ConnectionStatusProvider';
 import CustomSoundProvider from './CustomSoundProvider';
 import { DeviceProvider } from './DeviceProvider/DeviceProvider';
 import EmojiPickerProvider from './EmojiPickerProvider';
 import LayoutProvider from './LayoutProvider';
 import ModalProvider from './ModalProvider/ModalProvider';
+import OmnichannelCallProvider from './OmnichannelCallProvider';
 import OmnichannelProvider from './OmnichannelProvider';
 import RouterProvider from './RouterProvider';
 import ServerProvider from './ServerProvider';
@@ -24,6 +24,7 @@ import TranslationProvider from './TranslationProvider';
 import UserPresenceProvider from './UserPresenceProvider';
 import UserProvider from './UserProvider';
 import VideoConfProvider from './VideoConfProvider';
+import VoiceCallProvider from './VoiceCallProvider';
 
 type MeteorProviderProps = {
 	children?: ReactNode;
@@ -51,9 +52,11 @@ const MeteorProvider = ({ children }: MeteorProviderProps) => (
 																			<UserPresenceProvider>
 																				<ActionManagerProvider>
 																					<VideoConfProvider>
-																						<CallProvider>
-																							<OmnichannelProvider>{children}</OmnichannelProvider>
-																						</CallProvider>
+																						<VoiceCallProvider>
+																							<OmnichannelCallProvider>
+																								<OmnichannelProvider>{children}</OmnichannelProvider>
+																							</OmnichannelCallProvider>
+																						</VoiceCallProvider>
 																					</VideoConfProvider>
 																				</ActionManagerProvider>
 																			</UserPresenceProvider>
