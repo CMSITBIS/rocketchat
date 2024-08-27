@@ -7,6 +7,7 @@ import { useIsCallEnabled, useIsCallReady } from '../contexts/OmnichannelCallCon
 import { useOmnichannelEnabled } from '../hooks/omnichannel/useOmnichannelEnabled';
 import { useOmnichannelShowQueueLink } from '../hooks/omnichannel/useOmnichannelShowQueueLink';
 import { useHasLicenseModule } from '../hooks/useHasLicenseModule';
+import { useVoiceCallState } from '../providers/VoiceCallProvider/hooks/useVoiceCallState';
 import {
 	NavBarItemOmniChannelCallDialPad,
 	NavBarItemOmnichannelContact,
@@ -16,6 +17,7 @@ import {
 } from './NavBarOmnichannelToolbar';
 import { NavBarItemMarketPlaceMenu, NavBarItemAuditMenu, NavBarItemDirectoryPage, NavBarItemHomePage } from './NavBarPagesToolbar';
 import { NavBarItemLoginPage, NavBarItemAdministrationMenu, UserMenu } from './NavBarSettingsToolbar';
+import { NavBarItemVoiceCallDialer } from './NavBarVoiceCallToolbar';
 
 const NavBar = () => {
 	const t = useTranslation();
@@ -31,12 +33,16 @@ const NavBar = () => {
 	const showOmnichannelQueueLink = useOmnichannelShowQueueLink();
 	const isCallEnabled = useIsCallEnabled();
 	const isCallReady = useIsCallReady();
+	const { isEnabled: showVoiceCall } = useVoiceCallState();
 
 	const pagesToolbarRef = useRef(null);
 	const { toolbarProps: pagesToolbarProps } = useToolbar({ 'aria-label': t('Pages') }, pagesToolbarRef);
 
 	const omnichannelToolbarRef = useRef(null);
 	const { toolbarProps: omnichannelToolbarProps } = useToolbar({ 'aria-label': t('Omnichannel') }, omnichannelToolbarRef);
+
+	const voiceCallToolbarRef = useRef(null);
+	const { toolbarProps: voiceCallToolbarProps } = useToolbar({ 'aria-label': t('Voice_Call') }, omnichannelToolbarRef);
 
 	return (
 		<NavBarComponent aria-label='header'>
@@ -56,6 +62,14 @@ const NavBar = () => {
 							<NavBarItemOmnichannelContact title={t('Contacts')} />
 							{isCallEnabled && <NavBarItemOmnichannelCallToggle />}
 							<NavBarItemOmnichannelLivechatToggle />
+						</NavBarGroup>
+					</>
+				)}
+				{showVoiceCall && (
+					<>
+						<NavBarDivider />
+						<NavBarGroup role='toolbar' ref={voiceCallToolbarRef} {...voiceCallToolbarProps}>
+							<NavBarItemVoiceCallDialer primary={isCallEnabled} />
 						</NavBarGroup>
 					</>
 				)}

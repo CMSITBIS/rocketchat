@@ -1,7 +1,7 @@
 import { IconButton, MenuItem, MenuSection, MenuV2 } from '@rocket.chat/fuselage';
 import { useTranslation } from '@rocket.chat/ui-contexts';
 import type { ComponentProps, ReactNode } from 'react';
-import React from 'react';
+import React, { cloneElement } from 'react';
 
 import type { GenericMenuItemProps } from './GenericMenuItem';
 import GenericMenuItem from './GenericMenuItem';
@@ -29,7 +29,7 @@ type GenericMenuConditionalProps =
 
 type GenericMenuProps = GenericMenuCommonProps & GenericMenuConditionalProps & Omit<ComponentProps<typeof MenuV2>, 'children'>;
 
-const GenericMenu = ({ title, icon = 'menu', disabled, onAction, callbackAction, ...props }: GenericMenuProps) => {
+const GenericMenu = ({ title, icon = 'menu', disabled, onAction, callbackAction, button, className, ...props }: GenericMenuProps) => {
 	const t = useTranslation();
 
 	const sections = 'sections' in props && props.sections;
@@ -47,7 +47,11 @@ const GenericMenu = ({ title, icon = 'menu', disabled, onAction, callbackAction,
 	const isMenuEmpty = !(sections && sections.length > 0) && !(items && items.length > 0);
 
 	if (isMenuEmpty || disabled) {
-		return <IconButton small icon={icon} disabled />;
+		if (button) {
+			return cloneElement(button, { small: true, icon, disabled, className });
+		}
+
+		return <IconButton small icon={icon} className={className} disabled />;
 	}
 
 	return (
@@ -80,6 +84,8 @@ const GenericMenu = ({ title, icon = 'menu', disabled, onAction, callbackAction,
 					icon={icon}
 					title={t.has(title) ? t(title) : title}
 					onAction={onAction || handleAction}
+					className={className}
+					button={button}
 					{...(disabledKeys && { disabledKeys })}
 					{...props}
 				>
