@@ -1,4 +1,5 @@
 import type { IRole, IUser } from '@rocket.chat/core-typings';
+import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
 
 class UsersCollection extends Mongo.Collection<IUser> {
@@ -39,4 +40,4 @@ Object.assign(Meteor.users, {
 });
 
 /** @deprecated */
-export const Users = Meteor.users as UsersCollection;
+export const Users = Meteor.users as unknown as UsersCollection;
