@@ -1,5 +1,6 @@
 import type { RoomType } from '@rocket.chat/core-typings';
-import { States, StatesIcon, StatesSubtitle, StatesTitle } from '@rocket.chat/fuselage';
+import { Box, States, StatesIcon, StatesSubtitle, StatesTitle } from '@rocket.chat/fuselage';
+import { FeaturePreview, FeaturePreviewOff, FeaturePreviewOn } from '@rocket.chat/ui-client';
 import type { ReactElement } from 'react';
 import React, { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +11,7 @@ import { NotAuthorizedError } from '../../lib/errors/NotAuthorizedError';
 import { OldUrlRoomError } from '../../lib/errors/OldUrlRoomError';
 import { RoomNotFoundError } from '../../lib/errors/RoomNotFoundError';
 import RoomSkeleton from './RoomSkeleton';
+import RoomSidePanel from './SidePanel/RoomSidePanel';
 import { useOpenRoom } from './hooks/useOpenRoom';
 
 const RoomProvider = lazy(() => import('./providers/RoomProvider'));
@@ -23,46 +25,55 @@ type RoomOpenerProps = {
 	reference: string;
 };
 
+const isDirectOrOmnichannelRoom = (type: RoomType) => type === 'd' || type === 'l';
+
 const RoomOpener = ({ type, reference }: RoomOpenerProps): ReactElement => {
 	const { data, error, isSuccess, isError, isLoading } = useOpenRoom({ type, reference });
 	const { t } = useTranslation();
 
 	return (
-		<Suspense fallback={<RoomSkeleton />}>
-			{isLoading && <RoomSkeleton />}
-			{isSuccess && (
-				<RoomProvider rid={data.rid}>
-					<Room />
-				</RoomProvider>
-			)}
-			{isError &&
-				(() => {
-					if (error instanceof OldUrlRoomError) {
-						return <RoomSkeleton />;
-					}
+		<Box display='flex' w='full' h='full'>
+			<FeaturePreview feature='sidepanelNavigation'>
+				<FeaturePreviewOff>{null}</FeaturePreviewOff>
+				<FeaturePreviewOn>{!isDirectOrOmnichannelRoom(type) && <RoomSidePanel />}</FeaturePreviewOn>
+			</FeaturePreview>
 
-					if (error instanceof RoomNotFoundError) {
-						return <RoomNotFound />;
-					}
+			<Suspense fallback={<RoomSkeleton />}>
+				{isLoading && <RoomSkeleton />}
+				{isSuccess && (
+					<RoomProvider rid={data.rid}>
+						<Room />
+					</RoomProvider>
+				)}
+				{isError &&
+					(() => {
+						if (error instanceof OldUrlRoomError) {
+							return <RoomSkeleton />;
+						}
 
-					if (error instanceof NotAuthorizedError) {
-						return <NotAuthorizedPage />;
-					}
+						if (error instanceof RoomNotFoundError) {
+							return <RoomNotFound />;
+						}
 
-					return (
-						<RoomLayout
-							header={<Header />}
-							body={
-								<States>
-									<StatesIcon name='circle-exclamation' variation='danger' />
-									<StatesTitle>{t('core.Error')}</StatesTitle>
-									<StatesSubtitle>{getErrorMessage(error)}</StatesSubtitle>
-								</States>
-							}
-						/>
-					);
-				})()}
-		</Suspense>
+						if (error instanceof NotAuthorizedError) {
+							return <NotAuthorizedPage />;
+						}
+
+						return (
+							<RoomLayout
+								header={<Header />}
+								body={
+									<States>
+										<StatesIcon name='circle-exclamation' variation='danger' />
+										<StatesTitle>{t('core.Error')}</StatesTitle>
+										<StatesSubtitle>{getErrorMessage(error)}</StatesSubtitle>
+									</States>
+								}
+							/>
+						);
+					})()}
+			</Suspense>
+		</Box>
 	);
 };
 

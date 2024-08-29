@@ -11,6 +11,7 @@ import {
 	isTeamsDeleteProps,
 	isTeamsLeaveProps,
 	isTeamsUpdateProps,
+	isTeamsListRoomsAndDiscussionsProps,
 } from '@rocket.chat/rest-typings';
 import { escapeRegExp } from '@rocket.chat/string-helpers';
 import { Match, check } from 'meteor/check';
@@ -107,13 +108,17 @@ API.v1.addRoute(
 	},
 );
 
-const getTeamByIdOrName = async (params: { teamId: string } | { teamName: string }): Promise<ITeam | null> => {
+const getTeamByIdOrName = async (params: { teamId: string } | { teamName: string } | { roomId: string }): Promise<ITeam | null> => {
 	if ('teamId' in params && params.teamId) {
 		return Team.getOneById<ITeam>(params.teamId);
 	}
 
 	if ('teamName' in params && params.teamName) {
 		return Team.getOneByName(params.teamName);
+	}
+
+	if ('roomId' in params && params.roomId) {
+		return Team.getOneByRoomId(params.roomId);
 	}
 
 	return null;
@@ -267,6 +272,9 @@ API.v1.addRoute(
 					Match.ObjectIncluding({
 						teamName: String,
 					}),
+					Match.ObjectIncluding({
+						roomId: String,
+					}),
 				),
 			);
 
@@ -371,6 +379,29 @@ API.v1.addRoute(
 				count: records.length,
 				offset: 0,
 			});
+		},
+	},
+);
+
+// This should accept a teamId, filter (search by name on rooms collection) and sort/pagination
+// should return a list of rooms/discussions from the team. the discussions will only be returned from the main room
+API.v1.addRoute(
+	'teams.listRoomsAndDiscussions',
+	{ authRequired: true, validateParams: isTeamsListRoomsAndDiscussionsProps },
+	{
+		async get() {
+			const { offset, count } = await getPaginationItems(this.queryParams);
+			const { sort } = await this.parseJsonQuery();
+			const { filter } = this.queryParams;
+
+			const team = await getTeamByIdOrName(this.queryParams);
+			if (!team) {
+				return API.v1.notFound();
+			}
+
+			const data = await Team.listRoomsAndDiscussions(this.userId, team, filter, sort, offset, count);
+
+			return API.v1.success({ ...data, offset, count });
 		},
 	},
 );
