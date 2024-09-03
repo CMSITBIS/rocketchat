@@ -1,41 +1,35 @@
 import type { Box } from '@rocket.chat/fuselage';
 import type { OperationParams } from '@rocket.chat/rest-typings';
-import type { TranslationContextValue, TranslationKey } from '@rocket.chat/ui-contexts';
+import type { TranslationContextValue } from '@rocket.chat/ui-contexts';
 import { useTranslation } from '@rocket.chat/ui-contexts';
 import type { Chart as ChartType } from 'chart.js';
 import type { ComponentProps, MutableRefObject } from 'react';
 import React, { useRef, useEffect } from 'react';
 
-import { drawDoughnutChart } from '../../../../../app/livechat/client/lib/chartHandler';
+import { drawLineChart } from '../../../../../app/livechat/client/lib/chartHandler';
 import { AsyncStatePhase } from '../../../../hooks/useAsyncState';
 import { useEndpointData } from '../../../../hooks/useEndpointData';
 import Chart from './Chart';
 import { useUpdateChartData } from './useUpdateChartData';
 
-const labels = ['Open', 'Queued', 'On_Hold_Chats', 'Closed'];
-
 const initialData = {
-	open: 0,
-	queued: 0,
-	onhold: 0,
-	closed: 0,
+	agents: {},
+	success: true,
 };
 
 const init = (canvas: HTMLCanvasElement, context: ChartType | undefined, t: TranslationContextValue['translate']) =>
-	drawDoughnutChart(
-		canvas,
-		t('Chats'),
-		context,
-		labels.map((l) => t(l as TranslationKey)),
-		Object.values(initialData),
-	);
+	drawLineChart(canvas, context, [t('Open'), t('Closed'), t('On_Hold_Chats')], [], [[], []], {
+		legends: true,
+		anim: true,
+		smallTicks: true,
+	});
 
-type ChatsChartProps = {
-	params: OperationParams<'GET', '/v1/livechat/analytics/dashboards/charts/chats'>;
+type ChatsPerAgentChartProps = {
+	params: OperationParams<'GET', '/v1/livechat/analytics/dashboards/charts/chats-per-agent'>;
 	reloadRef: MutableRefObject<{ [x: string]: () => void }>;
 } & ComponentProps<typeof Box>;
 
-const ChatsChart = ({ params, reloadRef, ...props }: ChatsChartProps) => {
+const ChatsPerAgentChart = ({ params, reloadRef, ...props }: ChatsPerAgentChartProps) => {
 	const t = useTranslation();
 
 	const canvas: MutableRefObject<HTMLCanvasElement | null> = useRef(null);
@@ -48,11 +42,11 @@ const ChatsChart = ({ params, reloadRef, ...props }: ChatsChartProps) => {
 		init,
 	});
 
-	const { value: data, phase: state, reload } = useEndpointData('/v1/livechat/analytics/dashboards/charts/chats', { params });
+	const { value: data, phase: state, reload } = useEndpointData('/v1/livechat/analytics/dashboards/charts/chats-per-agent', { params });
 
-	reloadRef.current.chatsChart = reload;
+	reloadRef.current.chatsPerAgentChart = reload;
 
-	const { open, queued, closed, onhold } = data ?? initialData;
+	const chartData = data ?? initialData;
 
 	useEffect(() => {
 		const initChart = async () => {
@@ -65,14 +59,22 @@ const ChatsChart = ({ params, reloadRef, ...props }: ChatsChartProps) => {
 
 	useEffect(() => {
 		if (state === AsyncStatePhase.RESOLVED) {
-			updateChartData(t('Open'), [open]);
-			updateChartData(t('Closed'), [closed]);
-			updateChartData(t('On_Hold_Chats'), [onhold]);
-			updateChartData(t('Queued'), [queued]);
+			if (chartData?.success) {
+				const { success, ...filteredChartData } = chartData;
+				Object.entries(filteredChartData).forEach(([name, value]) => {
+					const { open, closed, onhold } = value as {
+						open: number;
+						closed: number;
+						onhold: number;
+					};
+
+					updateChartData(name, [open, closed, onhold]);
+				});
+			}
 		}
-	}, [closed, open, queued, onhold, state, t, updateChartData]);
+	}, [chartData, state, t, updateChartData]);
 
 	return <Chart canvasRef={canvas} {...props} />;
 };
 
-export default ChatsChart;
+export default ChatsPerAgentChart;
