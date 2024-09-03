@@ -5,7 +5,7 @@ import { settings } from '../../../settings/server';
 
 callbacks.add(
 	'livechat.beforeDelegateAgent',
-	async (agent, { department } = {}) => {
+	async (agent, { department, agents } = {}) => {
 		if (agent) {
 			return agent;
 		}
@@ -15,7 +15,7 @@ callbacks.add(
 		}
 
 		if (department) {
-			return LivechatDepartmentAgents.getNextBotForDepartment(department);
+			return LivechatDepartmentAgents.getNextBotForDepartment(department, agents);
 		}
 
 		return Users.getNextBotAgent();

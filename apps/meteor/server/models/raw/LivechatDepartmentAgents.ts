@@ -289,9 +289,10 @@ export class LivechatDepartmentAgentsRaw extends BaseRaw<ILivechatDepartmentAgen
 
 	async getNextBotForDepartment(
 		departmentId: ILivechatDepartmentAgents['departmentId'],
+		departmentAgents?: ILivechatDepartmentAgents[],
 		ignoreAgentId?: ILivechatDepartmentAgents['agentId'],
 	): Promise<Pick<ILivechatDepartmentAgents, '_id' | 'agentId' | 'departmentId' | 'username'> | null | undefined> {
-		const agents = await this.findByDepartmentId(departmentId).toArray();
+		const agents = departmentAgents || (await this.findByDepartmentId(departmentId).toArray());
 
 		if (!agents.length) {
 			return;

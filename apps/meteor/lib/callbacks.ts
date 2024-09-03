@@ -22,6 +22,7 @@ import type {
 	ILivechatDepartment,
 	MessageMention,
 	OmnichannelSourceType,
+	ILivechatDepartmentAgents,
 } from '@rocket.chat/core-typings';
 import type { Updater } from '@rocket.chat/models';
 import type { FilterOperators } from 'mongodb';
@@ -172,7 +173,10 @@ type ChainedCallbackSignatures = {
 		agentsId: ILivechatAgent['_id'][];
 	};
 	'livechat.applySimultaneousChatRestrictions': (_: undefined, params: { departmentId?: ILivechatDepartmentRecord['_id'] }) => undefined;
-	'livechat.beforeDelegateAgent': (agent: SelectedAgent | undefined, params?: { department?: string }) => SelectedAgent | null | undefined;
+	'livechat.beforeDelegateAgent': (
+		agent: SelectedAgent | undefined,
+		params?: { department?: string; agents?: ILivechatDepartmentAgents[] },
+	) => SelectedAgent | null | undefined;
 	'livechat.applyDepartmentRestrictions': (
 		query: FilterOperators<ILivechatDepartmentRecord>,
 		params: { userId: IUser['_id'] },

@@ -18,11 +18,7 @@ import { Meteor } from 'meteor/meteor';
 import { dispatchInquiryPosition } from '../../../../ee/app/livechat-enterprise/server/lib/Helper';
 import { callbacks } from '../../../../lib/callbacks';
 import { sendNotification } from '../../../lib/server';
-import {
-	notifyOnLivechatInquiryChangedById,
-	notifyOnLivechatInquiryChanged,
-	notifyOnSettingChanged,
-} from '../../../lib/server/lib/notifyListener';
+import { notifyOnLivechatInquiryChangedById, notifyOnLivechatInquiryChanged } from '../../../lib/server/lib/notifyListener';
 import { settings } from '../../../settings/server';
 import { i18n } from '../../../utils/lib/i18n';
 import { createLivechatRoom, createLivechatInquiry, allowAgentSkipQueue } from './Helper';
@@ -61,7 +57,7 @@ export const queueInquiry = async (inquiry: ILivechatInquiryRecord, defaultAgent
 	return QueueManager.requeueInquiry(inquiry, room, defaultAgent);
 };
 
-const getDepartment = async (department: string): Promise<string | undefined> => {
+const getDepartment = async (department?: string): Promise<string | undefined> => {
 	if (!department) {
 		return;
 	}
@@ -123,18 +119,18 @@ export class QueueManager {
 		}
 
 		if (RoutingManager.getConfig()?.autoAssignAgent) {
-			return LivechatInquiryStatus.READY;
+			return LivechatInquiryStatus.TAKEN;
 		}
 
 		if (!agent || !(await allowAgentSkipQueue(agent))) {
 			return LivechatInquiryStatus.QUEUED;
 		}
 
-		return LivechatInquiryStatus.READY;
+		return LivechatInquiryStatus.TAKEN;
 	}
 
 	static async queueInquiry(inquiry: ILivechatInquiryRecord, room: IOmnichannelRoom, defaultAgent?: SelectedAgent | null) {
-		if (inquiry.status === 'ready') {
+		if (inquiry.status === 'taken') {
 			return RoutingManager.delegateInquiry(inquiry, defaultAgent, undefined, room);
 		}
 
@@ -170,6 +166,7 @@ export class QueueManager {
 		extraData?: E;
 	}) {
 		logger.debug(`Requesting a room for guest ${guest._id}`);
+
 		check(
 			guest,
 			Match.ObjectIncluding({
@@ -182,37 +179,26 @@ export class QueueManager {
 			}),
 		);
 
+		const departmentId = await getDepartment(guest.department);
+
 		const defaultAgent =
 			(await callbacks.run('livechat.beforeDelegateAgent', agent, {
 				department: guest.department,
 			})) || undefined;
 
-		const department = guest.department && (await getDepartment(guest.department));
-
 		/**
-		 * we have 4 cases here
-		 * 1. agent and no department
-		 * 2. no agent and no department
-		 * 3. no agent and department
-		 * 4. agent and department informed
-		 *
-		 * in case 1, we check if the agent is online
-		 * in case 2, we check if there is at least one online agent in the whole service
-		 * in case 3, we check if there is at least one online agent in the department
-		 *
-		 * the case 4 is weird, but we are not throwing an error, just because the application works in some mysterious way
-		 * we don't have explicitly defined what to do in this case so we just kept the old behavior
-		 * it seems that agent has priority over department
-		 * but some cases department is handled before agent
-		 *
+		 * Handle agent and department combinations:
+		 * 1. Agent, no department: check if the agent is online.
+		 * 2. No agent, no department: check for any online agent in the service.
+		 * 3. No agent, with department: check for online agents in the department.
+		 * 4. Agent and department: agent priority is unclear, so default to old behavior.
 		 */
-
 		if (!settings.get('Livechat_accept_chats_with_no_agents')) {
 			if (agent && !defaultAgent) {
 				throw new Meteor.Error('no-agent-online', 'Sorry, no online agents');
 			}
 
-			if (!defaultAgent && guest.department && !department) {
+			if (!defaultAgent && guest.department && !departmentId) {
 				throw new Meteor.Error('no-agent-online', 'Sorry, no online agents');
 			}
 
@@ -223,11 +209,10 @@ export class QueueManager {
 
 		const name = (roomInfo?.fname as string) || guest.name || guest.username;
 
-		const room = await createLivechatRoom(rid, name, { ...guest, ...(department && { department }) }, roomInfo, {
+		const room = await createLivechatRoom(rid, name, { ...guest, ...(departmentId && { department: departmentId }) }, roomInfo, {
 			...extraData,
 			...(Boolean(customFields) && { customFields }),
 		});
-
 		if (!room) {
 			logger.error(`Room for visitor ${guest._id} not found`);
 			throw new Error('room-not-found');
@@ -242,7 +227,6 @@ export class QueueManager {
 			message,
 			extraData: { ...extraData, source: roomInfo.source },
 		});
-
 		if (!inquiry) {
 			logger.error(`Inquiry for visitor ${guest._id} not found`);
 			throw new Error('inquiry-not-found');
@@ -250,30 +234,35 @@ export class QueueManager {
 
 		void Apps.self?.triggerEvent(AppEvents.IPostLivechatRoomStarted, room);
 
-		const livechatSetting = await LivechatRooms.updateRoomCount();
-		if (livechatSetting) {
-			void notifyOnSettingChanged(livechatSetting);
-		}
+		const newRoom = (await this.queueInquiry(inquiry, room, defaultAgent)) || (await LivechatRooms.findOneById(rid));
 
-		const newRoom = (await this.queueInquiry(inquiry, room, defaultAgent)) ?? (await LivechatRooms.findOneById(rid));
 		if (!newRoom) {
 			logger.error(`Room with id ${rid} not found`);
 			throw new Error('room-not-found');
 		}
 
-		if (!newRoom.servedBy && settings.get('Omnichannel_calculate_dispatch_service_queue_statistics')) {
-			const [inq] = await LivechatInquiry.getCurrentSortedQueueAsync({
-				inquiryId: inquiry._id,
-				department,
-				queueSortBy: getInquirySortMechanismSetting(),
-			});
-
-			if (inq) {
-				void dispatchInquiryPosition(inq);
-			}
-		}
+		await Promise.allSettled([
+			this.handleDispatchServiceQueueStatistics(newRoom, inquiry._id, departmentId),
+			LivechatRooms.updateRoomCount(),
+		]);
 
 		return newRoom;
+	}
+
+	static async handleDispatchServiceQueueStatistics(newRoom: IOmnichannelRoom, inquiryId: string, departmentId?: string): Promise<void> {
+		if (newRoom.servedBy || !settings.get('Omnichannel_calculate_dispatch_service_queue_statistics')) {
+			return;
+		}
+
+		const [inquiry] = await LivechatInquiry.getCurrentSortedQueueAsync({
+			inquiryId,
+			department: departmentId,
+			queueSortBy: getInquirySortMechanismSetting(),
+		});
+
+		if (inquiry) {
+			void dispatchInquiryPosition(inquiry);
+		}
 	}
 
 	static async unarchiveRoom(archivedRoom: IOmnichannelRoom) {

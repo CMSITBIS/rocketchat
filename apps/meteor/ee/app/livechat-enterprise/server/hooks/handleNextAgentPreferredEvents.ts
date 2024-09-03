@@ -14,8 +14,7 @@ const normalizeDefaultAgent = (agent?: Pick<IUser, '_id' | 'username'> | null): 
 		return null;
 	}
 
-	const { _id: agentId, username } = agent;
-	return { agentId, username };
+	return { agentId: agent._id, username: agent.username };
 };
 
 const getDefaultAgent = async (username?: string): Promise<SelectedAgent | null> => {
@@ -25,6 +24,27 @@ const getDefaultAgent = async (username?: string): Promise<SelectedAgent | null>
 
 	return normalizeDefaultAgent(await Users.findOneOnlineAgentByUserList(username, { projection: { _id: 1, username: 1 } }));
 };
+
+async function findGuest(guestId: string) {
+	return LivechatVisitors.findOneEnabledById(guestId, {
+		projection: { lastAgent: 1, token: 1, contactManager: 1 },
+	});
+}
+
+function findPrioritizedAgent(contactManager?: string, lastAgent?: string) {
+	const managerAgent = contactManagerPreferred && getDefaultAgent(contactManager || '');
+	return managerAgent || getDefaultAgent(lastAgent || '');
+}
+
+async function findLastRoomAgent(token: string) {
+	const room = await LivechatRooms.findOneLastServedAndClosedByVisitorToken(token, {
+		projection: { servedBy: 1 },
+	});
+	if (!room?.servedBy?.username) {
+		return null;
+	}
+	return normalizeDefaultAgent(await Users.findOneOnlineAgentByUserList(room.servedBy.username, { projection: { _id: 1, username: 1 } }));
+}
 
 settings.watch<boolean>('Livechat_last_chatted_agent_routing', (value) => {
 	lastChattedAgentPreferred = value;
@@ -93,45 +113,21 @@ callbacks.add(
 			return defaultAgent;
 		}
 
-		const { _id: guestId } = defaultGuest;
-		const guest = await LivechatVisitors.findOneEnabledById(guestId, {
-			projection: { lastAgent: 1, token: 1, contactManager: 1 },
-		});
+		const guest = await findGuest(defaultGuest._id);
 		if (!guest) {
 			return defaultAgent;
 		}
 
-		const { lastAgent, token, contactManager } = guest;
-		const guestManager = contactManager?.username && contactManagerPreferred && getDefaultAgent(contactManager?.username);
-		if (guestManager) {
-			return guestManager;
+		const prioritizedAgent = await findPrioritizedAgent(guest.contactManager?.username, guest.lastAgent?.username);
+		if (prioritizedAgent) {
+			return prioritizedAgent;
 		}
 
 		if (!lastChattedAgentPreferred) {
 			return defaultAgent;
 		}
 
-		const guestAgent = lastAgent?.username && getDefaultAgent(lastAgent?.username);
-		if (guestAgent) {
-			return guestAgent;
-		}
-
-		const room = await LivechatRooms.findOneLastServedAndClosedByVisitorToken(token, {
-			projection: { servedBy: 1 },
-		});
-		if (!room?.servedBy) {
-			return defaultAgent;
-		}
-
-		const {
-			servedBy: { username: usernameByRoom },
-		} = room;
-		if (!usernameByRoom) {
-			return defaultAgent;
-		}
-		const lastRoomAgent = normalizeDefaultAgent(
-			await Users.findOneOnlineAgentByUserList(usernameByRoom, { projection: { _id: 1, username: 1 } }),
-		);
+		const lastRoomAgent = await findLastRoomAgent(guest.token);
 		return lastRoomAgent ?? defaultAgent;
 	},
 	callbacks.priority.MEDIUM,
