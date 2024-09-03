@@ -1,4 +1,4 @@
-import { useTranslation } from '@rocket.chat/ui-contexts';
+import { useTranslation } from 'react-i18next';
 
 import type { GenericMenuItemProps } from '../../../../components/GenericMenu/GenericMenuItem';
 import { useAdministrationItems } from './useAdministrationItems';
@@ -6,7 +6,7 @@ import { useAppsItems } from './useAppsItems';
 import { useAuditItems } from './useAuditItems';
 
 export const useAdministrationMenu = () => {
-	const t = useTranslation();
+	const { t } = useTranslation();
 
 	const administrationItems = useAdministrationItems();
 	const appItems = useAppsItems();

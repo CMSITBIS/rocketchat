@@ -1,4 +1,4 @@
-import { useTranslation } from '@rocket.chat/ui-contexts';
+import { useTranslation } from 'react-i18next';
 
 import type { GenericMenuItemProps } from '../../../../components/GenericMenu/GenericMenuItem';
 import MatrixFederationSearch from '../../MatrixFederationSearch';
@@ -9,7 +9,7 @@ export const useMatrixFederationItems = ({
 }: {
 	isMatrixEnabled: string | number | boolean | null | undefined;
 }): GenericMenuItemProps[] => {
-	const t = useTranslation();
+	const { t } = useTranslation();
 
 	const searchFederatedRooms = useCreateRoomModal(MatrixFederationSearch);
 

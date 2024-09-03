@@ -2,6 +2,27 @@
 	"name": "@rocket.chat/gazzodown",
 	"version": "10.0.0-rc.4",
 	"private": true,
+	"main": "./dist/index.js",
+	"typings": "./dist/index.d.ts",
+	"files": [
+		"/dist"
+	],
+	"scripts": {
+		"build": "rm -rf dist && tsc -p tsconfig.build.json",
+		"build-storybook": "build-storybook",
+		"dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+		"lint": "eslint --ext .js,.jsx,.ts,.tsx .",
+		"lint:fix": "eslint --ext .js,.jsx,.ts,.tsx . --fix",
+		"storybook": "start-storybook -p 6006",
+		"test": "jest",
+		"testunit": "jest",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"date-fns": "^3.3.1",
+		"highlight.js": "^11.5.1",
+		"react-error-boundary": "^3.1.4"
+	},
 	"devDependencies": {
 		"@babel/core": "~7.22.20",
 		"@rocket.chat/core-typings": "workspace:^",
@@ -41,24 +62,9 @@
 		"outdent": "^0.8.0",
 		"react-docgen-typescript-plugin": "~1.0.5",
 		"react-dom": "~17.0.2",
+		"react-i18next": "~15.0.1",
 		"typescript": "~5.5.4"
 	},
-	"scripts": {
-		"build": "rm -rf dist && tsc -p tsconfig.build.json",
-		"dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
-		"typecheck": "tsc --noEmit",
-		"lint": "eslint --ext .js,.jsx,.ts,.tsx .",
-		"lint:fix": "eslint --ext .js,.jsx,.ts,.tsx . --fix",
-		"testunit": "jest",
-		"test": "jest",
-		"storybook": "start-storybook -p 6006",
-		"build-storybook": "build-storybook"
-	},
-	"main": "./dist/index.js",
-	"typings": "./dist/index.d.ts",
-	"files": [
-		"/dist"
-	],
 	"peerDependencies": {
 		"@rocket.chat/core-typings": "workspace:^",
 		"@rocket.chat/css-in-js": "*",
@@ -69,12 +75,8 @@
 		"@rocket.chat/ui-client": "10.0.0-rc.4",
 		"@rocket.chat/ui-contexts": "10.0.0-rc.4",
 		"katex": "*",
-		"react": "*"
-	},
-	"dependencies": {
-		"date-fns": "^3.3.1",
-		"highlight.js": "^11.5.1",
-		"react-error-boundary": "^3.1.4"
+		"react": "*",
+		"react-i18next": "*"
 	},
 	"volta": {
 		"extends": "../../package.json"
