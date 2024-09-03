@@ -1,7 +1,9 @@
 import {
   useGoToRoom,
+  useSetting,
   useTranslation,
   useUserId,
+  useUserPreference,
 } from '@rocket.chat/ui-contexts';
 import type * as UiKit from '@rocket.chat/ui-kit';
 import {
@@ -38,6 +40,8 @@ const VideoConferenceBlock = ({
   const surfaceType = useSurfaceType();
   const userId = useUserId();
   const goToRoom = useGoToRoom();
+  const displayAvatars = useUserPreference<boolean>('displayAvatars');
+  const showRealName = useSetting<boolean>('UI_Use_Real_Name');
 
   const { action, viewId = undefined, rid } = useContext(UiKitContext);
 
@@ -141,13 +145,19 @@ const VideoConferenceBlock = ({
           {data.type !== 'direct' &&
             (data.users.length ? (
               <>
-                <VideoConfMessageUserStack users={data.users} />
+                <VideoConfMessageUserStack
+                  displayAvatars={displayAvatars}
+                  showRealName={showRealName}
+                  users={data.users}
+                />
                 <VideoConfMessageFooterText>
-                  {data.users.length > MAX_USERS
+                  {data.users.length > MAX_USERS || !displayAvatars
                     ? t('__usersCount__member_joined', {
-                        usersCount: data.users.length - MAX_USERS,
+                        count: displayAvatars
+                          ? data.users.length - MAX_USERS
+                          : data.users.length,
                       })
-                    : t('joined')}
+                    : t('Joined')}
                 </VideoConfMessageFooterText>
               </>
             ) : (
@@ -194,13 +204,19 @@ const VideoConferenceBlock = ({
         </VideoConfMessageButton>
         {Boolean(data.users.length) && (
           <>
-            <VideoConfMessageUserStack users={data.users} />
+            <VideoConfMessageUserStack
+              displayAvatars={displayAvatars}
+              showRealName={showRealName}
+              users={data.users}
+            />
             <VideoConfMessageFooterText>
-              {data.users.length > MAX_USERS
+              {data.users.length > MAX_USERS || !displayAvatars
                 ? t('__usersCount__member_joined', {
-                    count: data.users.length - MAX_USERS,
+                    count: displayAvatars
+                      ? data.users.length - MAX_USERS
+                      : data.users.length,
                   })
-                : t('joined')}
+                : t('Joined')}
             </VideoConfMessageFooterText>
           </>
         )}
