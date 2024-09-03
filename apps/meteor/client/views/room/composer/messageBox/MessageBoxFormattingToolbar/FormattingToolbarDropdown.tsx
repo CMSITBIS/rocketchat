@@ -1,5 +1,5 @@
-import { useTranslation } from '@rocket.chat/ui-contexts';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { isPromptButton, type FormattingButton } from '../../../../../../app/ui-message/client/messageBox/messageBoxFormatting';
 import GenericMenu from '../../../../../components/GenericMenu/GenericMenu';
@@ -13,7 +13,7 @@ type FormattingToolbarDropdownProps = {
 };
 
 const FormattingToolbarDropdown = ({ composer, items, disabled }: FormattingToolbarDropdownProps) => {
-	const t = useTranslation();
+	const { t } = useTranslation();
 
 	const formattingItems: GenericMenuItemProps[] = items.map((formatter) => {
 		const handleFormattingAction = () => {
